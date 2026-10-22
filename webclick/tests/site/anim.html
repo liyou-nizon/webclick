@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>一直在动的页面</title>
+<style>
+  body { font-family: Consolas, monospace; background: #1a202c; color: #68d391; padding: 40px; }
+  #clock { font-size: 48px; }
+  #bar { width: 600px; height: 20px; background: #2d3748; margin-top: 20px; }
+  #fill { height: 20px; background: #48bb78; width: 0; }
+</style>
+</head>
+<body>
+<h1>这个页面每 200ms 变一次，用来验证"静止触发"不会误触发</h1>
+<div id="clock">-</div>
+<div id="bar"><div id="fill"></div></div>
+<script>
+  let n = 0;
+  setInterval(() => {
+    n = (n + 1) % 100;
+    document.getElementById('clock').textContent = String(n).padStart(3, '0') + ' ' + Date.now();
+    document.getElementById('fill').style.width = (n * 6) + 'px';
+  }, 200);
+</script>
+</body>
+</html>

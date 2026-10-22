@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>iframe 内页</title>
+<style>
+  body { margin: 0; padding: 10px; font-family: "Microsoft YaHei", sans-serif; background: #edf2f7; }
+  button { font-size: 14px; padding: 8px 14px; border-radius: 6px; border: 1px solid #4a5568; background: #4a5568; color: #fff; cursor: pointer; }
+</style>
+</head>
+<body>
+<button id="inner-ok">保存并关闭</button>
+<span id="inner-state" style="font-size:12px;color:#4a5568"></span>
+<script>
+  document.getElementById('inner-ok').addEventListener('click', () => {
+    document.getElementById('inner-state').textContent = ' 已保存';
+    try { parent.postMessage({ type: 'inner-ok' }, '*'); } catch (e) {}
+  });
+</script>
+</body>
+</html>

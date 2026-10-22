@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>webclick 测试台</title>
+<style>
+  body { font-family: "Microsoft YaHei", sans-serif; margin: 0; padding: 24px; background: #f2f4f8; color: #1a202c; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  .card { background: #fff; border: 1px solid #d7dce5; border-radius: 10px; padding: 16px; margin-bottom: 14px; width: 720px; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; color: #4a5568; font-weight: 600; }
+  button { font-size: 15px; padding: 10px 18px; border-radius: 8px; border: 1px solid #2b6cb0; background: #2b6cb0; color: #fff; cursor: pointer; }
+  button:hover { background: #2c5282; }
+  .ghost { background: #fff; color: #2b6cb0; }
+  a.linkbtn { display: inline-block; padding: 10px 18px; border-radius: 8px; background: #38a169; color: #fff; text-decoration: none; font-size: 15px; }
+  input { font-size: 15px; padding: 9px 12px; border: 1px solid #cbd5e0; border-radius: 8px; width: 320px; }
+  #status { font-weight: 700; color: #c05621; }
+  #status.ok { color: #2f855a; }
+  .log { font-family: Consolas, monospace; font-size: 12px; color: #4a5568; white-space: pre-wrap; }
+  iframe { border: 1px dashed #a0aec0; width: 100%; height: 96px; }
+  #late { background: #805ad5; border-color: #805ad5; display: none; }
+</style>
+</head>
+<body>
+<h1>webclick 按钮识别测试台</h1>
+
+<div class="card">
+  <h2>1. 标准 DOM 按钮（文字 / id）</h2>
+  <button id="submit" data-testid="submit-order">确认下单</button>
+  <button id="reset" class="ghost">重置</button>
+</div>
+
+<div class="card">
+  <h2>2. 链接式按钮 + 输入框</h2>
+  <input id="order-id" placeholder="订单号">
+  <a href="#" class="linkbtn" id="next-step" role="button">下一步</a>
+</div>
+
+<div class="card">
+  <h2>3. 纯图片按钮（无文字，DOM 有 alt）</h2>
+  <img id="img-btn" alt="" width="150" height="46" style="cursor:pointer"
+       src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='46'><rect width='150' height='46' rx='8' fill='%23d69e2e'/><circle cx='26' cy='23' r='11' fill='%23fff'/><path d='M20 23h12M27 18l5 5-5 5' stroke='%23d69e2e' stroke-width='3' fill='none'/></svg>">
+</div>
+
+<div class="card">
+  <h2>4. Canvas 绘制的按钮（DOM 里没有文字，只能视觉识别）</h2>
+  <canvas id="cv" width="220" height="60" style="cursor:pointer"></canvas>
+  <span class="log" id="cv-hint"></span>
+</div>
+
+<div class="card">
+  <h2>5. 延迟出现 + iframe 内按钮 + 会跳页的链接</h2>
+  <button id="late">延迟出现的按钮</button>
+  <a href="inner.html" id="nav-link" class="linkbtn" style="margin-left:8px">跳转测试</a>
+  <button id="modal-btn" class="ghost" style="margin-left:8px">打开遮罩</button>
+  <iframe src="inner.html" title="inner"></iframe>
+</div>
+
+<div class="card" style="height:1300px; display:flex; align-items:flex-end;">
+  <p class="log">↑ 上面这一大块是故意留的空白：下面的按钮必须向下滚动才能看到（用来测"滚屏搜索"）。</p>
+</div>
+
+<div class="card" id="far-card">
+  <h2>6. 首屏之外 + 只有 canvas（DOM 里没有文字）</h2>
+  <canvas id="cv-far" width="240" height="60" style="cursor:pointer"></canvas>
+  <span class="log" id="far-hint"></span>
+</div>
+
+<div class="card">
+  <h2>状态</h2>
+  <p>点击记录：<span id="logtxt" class="log">（还没有）</span></p>
+  <p>流程状态：<span id="status">未开始</span></p>
+</div>
+
+<script>
+  const logtxt = document.getElementById('logtxt');
+  const clicks = [];
+  function note(name) {
+    clicks.push(name);
+    logtxt.textContent = clicks.join(' → ');
+    if (clicks.length >= 1 && document.getElementById('status').textContent === '未开始') {
+      document.getElementById('status').textContent = '进行中';
+    }
+  }
+  window.__clicks = clicks;
+  window.__setStatus = (s, ok) => {
+    const el = document.getElementById('status');
+    el.textContent = s;
+    el.classList.toggle('ok', !!ok);
+  };
+
+  document.getElementById('submit').addEventListener('click', () => note('submit'));
+  document.getElementById('reset').addEventListener('click', () => { clicks.length = 0; logtxt.textContent = '（已重置）'; });
+  document.getElementById('next-step').addEventListener('click', (e) => { e.preventDefault(); note('next-step'); });
+  document.getElementById('img-btn').addEventListener('click', () => note('img-btn'));
+
+  // canvas 按钮：画一个带 "开始" 字样的圆角按钮，点击命中用几何判断
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#e53e3e';
+  ctx.beginPath();
+  ctx.roundRect(6, 6, 208, 48, 10);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 20px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('开始采集', 110, 31);
+  cv.addEventListener('click', (e) => {
+    note('canvas');
+    document.getElementById('cv-hint').textContent = ` canvas 命中点 (${e.offsetX},${e.offsetY})`;
+  });
+
+  // 首屏之外的 canvas 按钮（必须滚屏才能看到）
+  const cvFar = document.getElementById('cv-far');
+  const fctx = cvFar.getContext('2d');
+  fctx.fillStyle = '#2f855a';
+  fctx.beginPath();
+  fctx.roundRect(6, 6, 228, 48, 10);
+  fctx.fill();
+  fctx.fillStyle = '#fff';
+  fctx.font = 'bold 20px "Microsoft YaHei", sans-serif';
+  fctx.textAlign = 'center';
+  fctx.textBaseline = 'middle';
+  fctx.fillText('继续学习', 120, 31);
+  cvFar.addEventListener('click', (e) => {
+    note('far');
+    document.getElementById('far-hint').textContent = ` canvas 命中点 (${e.offsetX},${e.offsetY})`;
+    window.__setStatus('已完成', true);
+  });
+
+  // 遮罩层：模拟"15 分钟后弹出对话框盖住按钮"的情况，Esc 关闭
+  const overlay = document.createElement('div');
+  overlay.id = 'overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:none;'
+    + 'align-items:center;justify-content:center;color:#fff;font-size:18px';
+  overlay.textContent = '浮层挡住了页面（按 Esc 关闭）';
+  document.body.appendChild(overlay);
+  document.getElementById('modal-btn').addEventListener('click', () => {
+    overlay.style.display = 'flex';
+    note('modal-btn');
+  });
+  window.__overlayOpen = () => overlay.style.display === 'flex';
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { overlay.style.display = 'none'; }
+  });
+
+  setTimeout(() => {
+    const b = document.getElementById('late');
+    b.style.display = 'inline-block';
+    b.addEventListener('click', () => { note('late'); window.__setStatus('已完成', true); });
+  }, 1500);
+</script>
+</body>
+</html>

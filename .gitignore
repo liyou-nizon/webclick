@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 依赖（用 requirements.txt 安装，不入库）
+webclick/_libs/
+
+# 运行产物
+webclick/out/
+webclick/.tmp/
+webclick/STOP
+webclick/schedules/
+webclick/tests/assets/
+webclick/tests/workflows/
+
+# 浏览器登录态（绝对不要提交）
+.webclick-profile/
+*.webclick-profile/
+
+# 个人工作流（含站点 token / 课程 ID）
+webclick/workflows/*.json
+
+# 杂项
+*.log
+*.bak
+.DS_Store
+Thumbs.db

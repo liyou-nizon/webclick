@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "webclick"
+version = "0.1.0"
+description = "浏览器按钮识别与点击自动化：DOM / 模板匹配 / OCR 三级降级，支持录制、回放、循环"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+  "playwright>=1.40",
+  "opencv-python-headless>=4.8",
+  "numpy>=1.24",
+  "pillow>=10",
+  "rapidocr-onnxruntime>=1.3",
+]
+
+[project.optional-dependencies]
+# 只想要 DOM 定位、不想装 400MB 的视觉依赖时
+dom = ["playwright>=1.40"]
+
+[project.scripts]
+webclick = "webclick.cli:main"
+
+[tool.setuptools]
+packages = ["webclick"]

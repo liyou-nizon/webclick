@@ -1,0 +1,29 @@
+{
+  "name": "template",
+  "start_url": "http://127.0.0.1:8765/index.html",
+  "viewport": { "width": 1280, "height": 900 },
+  "headless": false,
+  "defaults": { "timeout_ms": 8000, "retries": 1, "settle_ms": 350 },
+  "steps": [
+    {
+      "do": "click",
+      "name": "确认下单",
+      "find": [
+        { "by": "role", "role": "button", "value": "确认下单" },
+        { "by": "text", "value": "确认下单" },
+        { "by": "css", "value": "#submit" }
+      ]
+    },
+    {
+      "do": "fill",
+      "name": "填订单号",
+      "value": "A-2026-10",
+      "find": [{ "by": "css", "value": "#order-id" }]
+    },
+    {
+      "do": "assert",
+      "name": "两次操作都生效",
+      "expect": { "js": "window.__clicks.join('|') === 'submit'" }
+    }
+  ]
+}
