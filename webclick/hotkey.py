@@ -6,9 +6,15 @@
 from __future__ import annotations
 
 import ctypes
-import ctypes.wintypes as wt
 import os
 import threading
+
+try:  # 非 Windows 上没有 ctypes.wintypes，全局热键会降级为"不可用"，其余功能不受影响
+    import ctypes.wintypes as wt
+    _HAVE_WT = True
+except Exception:  # noqa: BLE001
+    wt = None  # type: ignore[assignment]
+    _HAVE_WT = False
 
 WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
@@ -55,6 +61,9 @@ class Hotkey:
         self._thread_id = 0
         self._mode = ""
         self._ready = threading.Event()
+        if not _HAVE_WT or os.name != "nt":
+            self.error = "当前平台没有全局热键（仅 Windows）"
+            return
         if not self.spec:
             self.error = "未启用"
             return
