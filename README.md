@@ -29,13 +29,31 @@ A browser automation tool that finds and clicks buttons by DOM selectors, image 
 
 ## 安装
 
+### 方式 A：Windows 懒人包（不装 Python，解压即用）
+
+到 [Releases](https://github.com/liyou-nizon/webclick/releases) 下载
+`webclick-0.1.0-win64-portable.zip`（约 150 MB），解压后双击 `启动界面.cmd`。
+包里自带 Python 3.12 + 全部依赖（含 OCR 模型），只需要系统自带 Edge。
+
+### 方式 B：从源码装
+
 需要 Python 3.10+ 和本机已安装的 Edge 或 Chrome（不下载 Chromium）。
 
 ```bash
-git clone <this-repo> webclick && cd webclick
+git clone https://github.com/liyou-nizon/webclick.git
+cd webclick
 python -m pip install -r requirements.txt
 python -m webclick doctor        # 检查 playwright / opencv / OCR / 浏览器
 ```
+
+只想用 DOM 定位、不想装 400MB 视觉依赖：
+
+```bash
+python -m pip install -e ".[dom]"
+```
+
+> 平台说明：**热键（F9）和 Tkinter 界面目前只在 Windows 上验证过**，
+> 其它平台 `hotkey.py` 会降级为"无全局热键"，其余命令行功能可用。
 
 > 依赖较大（opencv + onnxruntime + OCR 模型，约 400MB）。只想用 DOM 定位的话，
 > 可以不装 `opencv-python-headless` 和 `rapidocr-onnxruntime`，其余功能照常。
