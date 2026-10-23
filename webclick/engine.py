@@ -52,10 +52,11 @@ PAGE_SIG_JS = r"""
 
 # 找"确认弹窗"并标记其中的确认按钮：可见、浮层（fixed 或高 z-index）、含确认类文案、有可点按钮
 DIALOG_JS = r"""
-() => {
-  const CONFIRM = ['确定', '继续学习', '继续观看', '继续', '知道了', '好的', '我已知晓',
-                   '是', '同意', '关闭'];
-  const PREFER = ['确定', '继续学习', '继续观看', '继续', '知道了', '好的', '同意', '是'];
+(extra) => {
+  const BASE = ['确定', '继续学习', '继续观看', '继续', '知道了', '好的', '我已知晓',
+                '是', '同意', '关闭'];
+  const CONFIRM = BASE.concat(extra || []);
+  const PREFER = ['确定', '继续学习', '继续观看', '继续', '知道了', '好的', '同意', '是', '确认'];
   const vis = (el) => {
     const st = getComputedStyle(el), r = el.getBoundingClientRect();
     return st.display !== 'none' && st.visibility !== 'hidden'
@@ -125,11 +126,11 @@ NEXT_CHAPTER_JS = r"""
 """
 
 
-def dismiss_dialog(page, log=print) -> dict | None:
-    """找可见的确认弹窗并点掉它；返回被点掉的弹窗信息，没有就返回 None。"""
+def dismiss_dialog(page, words: list[str] | None = None, log=print) -> dict | None:
+    """找可见的确认弹窗并点掉它；words 可追加自定义按钮文案（如"确认""我知道了"）。"""
     for fr in page.frames:
         try:
-            found = fr.evaluate(DIALOG_JS) or []
+            found = fr.evaluate(DIALOG_JS, words or []) or []
         except Exception:  # noqa: BLE001
             continue
         if not found:
@@ -316,7 +317,7 @@ class Engine:
             return ""
 
     def _dismiss_dialog(self, page, texts: list[str] | None = None) -> dict | None:
-        return dismiss_dialog(page, log=self.log)
+        return dismiss_dialog(page, words=texts, log=self.log)
 
     def _play_video(self, page, timeout_ms: int) -> dict:
         """在任意 frame 里找 <video>，点播放并验证 currentTime 真的在走。"""
