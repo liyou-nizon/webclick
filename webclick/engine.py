@@ -50,6 +50,53 @@ PAGE_SIG_JS = r"""
       + '|' + document.querySelectorAll('*').length
 """
 
+# 找"确认弹窗"并标记其中的确认按钮：可见、浮层（fixed 或高 z-index）、含确认类文案、有可点按钮
+DIALOG_JS = r"""
+() => {
+  const CONFIRM = ['确定', '继续学习', '继续观看', '继续', '知道了', '好的', '我已知晓',
+                   '是', '同意', '关闭'];
+  const PREFER = ['确定', '继续学习', '继续观看', '继续', '知道了', '好的', '同意', '是'];
+  const vis = (el) => {
+    const st = getComputedStyle(el), r = el.getBoundingClientRect();
+    return st.display !== 'none' && st.visibility !== 'hidden'
+           && Number(st.opacity || 1) > 0.1 && r.width >= 160 && r.height >= 40;
+  };
+  // 按钮本身很小，不能用弹窗容器的尺寸门槛
+  const visBtn = (el) => {
+    const st = getComputedStyle(el), r = el.getBoundingClientRect();
+    return st.display !== 'none' && st.visibility !== 'hidden'
+           && Number(st.opacity || 1) > 0.1 && r.width >= 8 && r.height >= 8;
+  };
+  document.querySelectorAll('[data-wc-dialog-btn]').forEach(e => e.removeAttribute('data-wc-dialog-btn'));
+  const found = [];
+  for (const el of document.querySelectorAll('div,section,dialog,form')) {
+    if (!vis(el)) continue;
+    const st = getComputedStyle(el);
+    const zi = parseInt(st.zIndex || '0', 10) || 0;
+    if (!(st.position === 'fixed' || zi >= 100)) continue;
+    const txt = (el.innerText || '').replace(/\s+/g, ' ').trim();
+    if (!txt || txt.length > 400) continue;
+    if (!CONFIRM.some(w => txt.includes(w))) continue;
+    const buttons = [...el.querySelectorAll('button,a,input,[role=button],span,div')].filter(b => {
+      const bt = ((b.innerText || b.value || '') + '').trim();
+      if (!bt || bt.length > 10) return false;
+      if (!CONFIRM.includes(bt)) return false;   // 严格相等：避免把"取消 确定"这种容器当按钮
+      if (b.children.length > 0) return false;   // 只认叶子节点
+      return visBtn(b);
+    });
+    if (!buttons.length) continue;
+    // 优先点"确定/继续"，否则点最后一个（弹窗按钮通常是 取消|确定）
+    let btn = buttons.find(b => PREFER.some(w => ((b.innerText || b.value || '') + '').trim().includes(w)));
+    if (!btn) btn = buttons[buttons.length - 1];
+    btn.setAttribute('data-wc-dialog-btn', '1');
+    found.push({text: txt.slice(0, 120),
+                button: ((btn.innerText || btn.value || '') + '').trim().slice(0, 12),
+                cls: (el.className || '').toString().slice(0, 50), zIndex: zi});
+  }
+  return found;
+}
+"""
+
 # 通用"目录型列表"的下一个可点项：默认按常见的 posCatalog_select 结构（id=cur<chapterId>，
 # 当前项带 posCatalog_active），选择器可用 step 里的 "selector" 覆盖。
 NEXT_CHAPTER_JS = r"""
@@ -76,6 +123,27 @@ NEXT_CHAPTER_JS = r"""
           nextText: (next.innerText || '').replace(/\s+/g, ' ').slice(0, 60)};
 }
 """
+
+
+def dismiss_dialog(page, log=print) -> dict | None:
+    """找可见的确认弹窗并点掉它；返回被点掉的弹窗信息，没有就返回 None。"""
+    for fr in page.frames:
+        try:
+            found = fr.evaluate(DIALOG_JS) or []
+        except Exception:  # noqa: BLE001
+            continue
+        if not found:
+            continue
+        try:
+            btn = fr.locator("[data-wc-dialog-btn]").first
+            btn.click(timeout=3000)
+            log(f"  关掉弹窗「{(found[0].get('text') or '')[:40]}」→ 点了「{found[0].get('button')}」")
+            page.wait_for_timeout(300)
+            return found[0]
+        except Exception as exc:  # noqa: BLE001
+            log(f"  弹窗找到了但点不动: {exc}")
+            continue
+    return None
 
 
 class Engine:
@@ -246,6 +314,9 @@ class Engine:
             return page.evaluate(PAGE_SIG_JS) or ""
         except Exception:  # noqa: BLE001
             return ""
+
+    def _dismiss_dialog(self, page, texts: list[str] | None = None) -> dict | None:
+        return dismiss_dialog(page, log=self.log)
 
     def _play_video(self, page, timeout_ms: int) -> dict:
         """在任意 frame 里找 <video>，点播放并验证 currentTime 真的在走。"""
@@ -470,6 +541,12 @@ class Engine:
                               "chapter": info.get("nextText"), "changed": changed}
                     if not changed:
                         self.log(f"  注意：点了下一章但网址没变（{info.get('nextText')}）")
+                elif action == "dismiss_dialog":
+                    hit = self._dismiss_dialog(page, step.get("texts"))
+                    result = {"found": bool(hit), "dialog": (hit or {}).get("text", ""),
+                              "clicked": (hit or {}).get("button", "")}
+                    if not hit:
+                        self.log("  当前没有确认弹窗（正常，继续）")
                 elif action == "play_video":
                     result = self._play_video(page, timeout_ms)
                 elif action == "scroll_to":
@@ -628,7 +705,7 @@ class Session:
                  idle_seconds: float = 0, idle_mode: str = "page", idle_check_s: float = 2.0,
                  idle_threshold: float = 3.0, idle_ratio: float = 0.01,
                  idle_verbose: bool = False, idle_ignore_video: bool = False,
-                 min_dwell_s: int = 0,
+                 min_dwell_s: int = 0, auto_dismiss: bool = True,
                  max_wait_s: int = 0,
                  on_round: Callable[[Any, dict], None] | None = None):
         spec_mod.validate(spec)
@@ -650,6 +727,7 @@ class Session:
         self.idle_verbose = bool(idle_verbose)
         self.idle_ignore_video = bool(idle_ignore_video)
         self.min_dwell_s = int(min_dwell_s or 0)
+        self.auto_dismiss = bool(auto_dismiss)
         self.max_wait_s = int(max_wait_s or 0)
         self.reset_each = reset_each
         self.on_round = on_round
@@ -814,10 +892,12 @@ class Session:
             if n > 1 and self.reset_each and not page.is_closed() and not self.reload_at_start:
                 # 上一轮留下的浮层/滚动位置会让这一轮点错地方，先复位
                 try:
+                    if self.auto_dismiss:
+                        dismiss_dialog(page, log=self.log)
                     page.keyboard.press("Escape")
                     page.evaluate("window.scrollTo(0, 0)")
                     page.wait_for_timeout(200)
-                    self.log("  已复位：Esc 关浮层 + 回到页面顶部")
+                    self.log("  已复位：关确认弹窗 + Esc 关浮层 + 回到页面顶部")
                 except Exception as exc:  # noqa: BLE001
                     self.log(f"  复位失败: {exc}")
             try:
