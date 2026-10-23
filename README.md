@@ -1,4 +1,4 @@
-# webclick
+﻿# webclick
 
 用真实浏览器（本机 Edge/Chrome）识别页面上的按钮并点击，支持**录制 → 回放 → 循环**。
 按钮定位分三级降级：**DOM 语义 → 模板匹配 → OCR**，所以 canvas 画出来的按钮、纯图片按钮也能点。
@@ -111,7 +111,7 @@ python -m webclick keep my.json --idle-trigger 60
 ```
 
 `do` 可用：`click` `fill` `press` `goto` `wait` `assert` `screenshot` `scroll`（相对滚动）
-`scroll_to`（滚到绝对 y）`next_chapter`（列表型目录里点"当前项的下一项"，选择器可用 step 的
+`scroll_to`（滚到绝对 y）`dismiss_dialog`（点掉"确定/继续"这类确认弹窗）`next_chapter`（列表型目录里点"当前项的下一项"，选择器可用 step 的
 `selector` 覆盖）`play_video`（找 `<video>` 并验证 `currentTime` 真的在走）
 
 `find` 是候选列表，按顺序试，第一个命中的就用；都失败时会把现场打印出来。
