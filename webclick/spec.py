@@ -6,9 +6,10 @@ import os
 import time
 from typing import Any
 
-STEP_KEYS = {"do", "name", "find", "value", "timeout_ms", "expect", "optional", "keys", "js"}
+STEP_KEYS = {"do", "name", "find", "value", "timeout_ms", "expect", "optional", "keys", "js",
+             "selector", "texts"}
 SUPPORTED_ACTIONS = {"click", "fill", "goto", "wait", "assert", "screenshot", "press",
-                     "scroll", "scroll_to", "next_chapter", "play_video"}
+                     "scroll", "scroll_to", "next_chapter", "play_video", "dismiss_dialog"}
 
 DEFAULT_SPEC: dict[str, Any] = {
     "name": "workflow",
