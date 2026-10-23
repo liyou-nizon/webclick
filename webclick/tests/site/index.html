@@ -52,6 +52,7 @@
   <button id="late">延迟出现的按钮</button>
   <a href="inner.html" id="nav-link" class="linkbtn" style="margin-left:8px">跳转测试</a>
   <button id="modal-btn" class="ghost" style="margin-left:8px">打开遮罩</button>
+  <button id="dialog-btn" class="ghost" style="margin-left:8px">打开确认弹窗</button>
   <iframe src="inner.html" title="inner"></iframe>
 </div>
 
@@ -143,6 +144,30 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { overlay.style.display = 'none'; }
   });
+
+  // 确认弹窗：模拟"任务点未完成，确定继续吗？"这类对话框
+  const dlg = document.createElement('div');
+  dlg.id = 'confirm-dialog';
+  dlg.style.cssText = 'position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:10000;'
+    + 'background:#fff;border:1px solid #cbd5e0;border-radius:10px;padding:22px 26px;display:none;'
+    + 'box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:15px';
+  dlg.innerHTML = '<div style="margin-bottom:16px">本章节任务点未完成，确定要离开吗？</div>'
+    + '<div style="text-align:right"><button id="dlg-cancel" class="ghost">取消</button>'
+    + ' <button id="dlg-ok">确定</button></div>';
+  document.body.appendChild(dlg);
+  document.getElementById('dialog-btn').addEventListener('click', () => {
+    dlg.style.display = 'block';
+    note('dialog-btn');
+  });
+  document.getElementById('dlg-ok').addEventListener('click', () => {
+    dlg.style.display = 'none';
+    note('confirm-ok');
+  });
+  document.getElementById('dlg-cancel').addEventListener('click', () => {
+    dlg.style.display = 'none';
+    note('confirm-cancel');
+  });
+  window.__dialogOpen = () => dlg.style.display === 'block';
 
   setTimeout(() => {
     const b = document.getElementById('late');
