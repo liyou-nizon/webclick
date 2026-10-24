@@ -147,6 +147,28 @@ def dismiss_dialog(page, words: list[str] | None = None, log=print) -> dict | No
     return None
 
 
+def install_dialog_auto_accept(page, log=print) -> None:
+    """让浏览器原生 confirm/alert（不是 DOM 弹窗）自动点"确定"。
+
+    只在工作流里写 "auto_accept_dialogs": true 时安装，默认不装 ——
+    否则任何确认框都会被吞掉。
+    """
+
+    def _handler(dialog):
+        try:
+            kind = dialog.type
+            msg = (dialog.message or "").replace("\n", " ")[:80]
+            dialog.accept()
+            log(f"  原生对话框（{kind}）已自动确定：「{msg}」")
+        except Exception as exc:  # noqa: BLE001
+            log(f"  原生对话框处理失败: {exc}")
+
+    try:
+        page.on("dialog", _handler)
+    except Exception as exc:  # noqa: BLE001
+        log(f"  安装原生对话框处理失败: {exc}")
+
+
 class Engine:
     def __init__(self, spec: dict[str, Any], out_dir: str, log: LogFn | None = None,
                  stop_event: threading.Event | None = None,
@@ -644,6 +666,8 @@ class Engine:
         self.report["started_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
         try:
             with open_page(self.spec, headless=self.headless, log=self.log) as (page, _ctx):
+                if self.spec.get("auto_accept_dialogs"):
+                    install_dialog_auto_accept(page, log=self.log)
                 start = self.spec.get("start_url")
                 if start:
                     self.log(f"打开 {start}")
@@ -708,7 +732,8 @@ class Session:
                  idle_verbose: bool = False, idle_ignore_video: bool = False,
                  min_dwell_s: int = 0, auto_dismiss: bool = True,
                  max_wait_s: int = 0,
-                 on_round: Callable[[Any, dict], None] | None = None):
+                 on_round: Callable[[Any, dict], None] | None = None,
+                 on_start: Callable[[Any], None] | None = None):
         spec_mod.validate(spec)
         spec_mod.resolve_assets(spec)
         self.spec = spec
@@ -732,6 +757,7 @@ class Session:
         self.max_wait_s = int(max_wait_s or 0)
         self.reset_each = reset_each
         self.on_round = on_round
+        self.on_start = on_start
         self._first_url = None
         self.log = log or (lambda m: print(m, flush=True))
         self.page = None
@@ -852,6 +878,8 @@ class Session:
         try:
             with open_page(self.spec, headless=self.headless, log=self.log) as (page, _ctx):
                 self.page = page
+                if self.spec.get("auto_accept_dialogs"):
+                    install_dialog_auto_accept(page, log=self.log)
                 self._loop(page, name, interval_s, rounds)
         except KeyboardInterrupt:
             self.log("常驻模式已中止")
@@ -865,6 +893,12 @@ class Session:
             self.log(f"打开 {start}（只打开这一次）")
             page.goto(start, wait_until="domcontentloaded",
                       timeout=int((self.spec.get("defaults") or {}).get("timeout_ms", 8000)))
+            page.wait_for_timeout(2000)
+        if self.on_start and not page.is_closed():
+            try:
+                self.on_start(page)
+            except Exception as exc:  # noqa: BLE001
+                self.log(f"  on_start 回调失败: {exc}")
         n = 0
         while True:
             if self.stop_event.is_set():

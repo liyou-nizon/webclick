@@ -53,6 +53,7 @@
   <a href="inner.html" id="nav-link" class="linkbtn" style="margin-left:8px">跳转测试</a>
   <button id="modal-btn" class="ghost" style="margin-left:8px">打开遮罩</button>
   <button id="dialog-btn" class="ghost" style="margin-left:8px">打开确认弹窗</button>
+  <button id="native-btn" class="ghost" style="margin-left:8px">原生 confirm</button>
   <iframe src="inner.html" title="inner"></iframe>
 </div>
 
@@ -168,6 +169,12 @@
     note('confirm-cancel');
   });
   window.__dialogOpen = () => dlg.style.display === 'block';
+
+  // 浏览器原生 confirm：验证 auto_accept_dialogs
+  document.getElementById('native-btn').addEventListener('click', () => {
+    const ok = confirm('继续观看下一节吗？');
+    note(ok ? 'native-accepted' : 'native-dismissed');
+  });
 
   setTimeout(() => {
     const b = document.getElementById('late');

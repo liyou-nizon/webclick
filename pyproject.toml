@@ -1,10 +1,10 @@
-[build-system]
+﻿[build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "webclick"
-version = "0.1.0"
+version = "0.2.2"
 description = "浏览器按钮识别与点击自动化：DOM / 模板匹配 / OCR 三级降级，支持录制、回放、循环"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -26,3 +26,4 @@ webclick = "webclick.cli:main"
 
 [tool.setuptools]
 packages = ["webclick"]
+
